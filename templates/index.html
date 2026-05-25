@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>IPL Orange Cap Predictor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+
+  <!-- Animated background -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <!-- Navbar -->
+  <nav class="navbar">
+    <div class="nav-inner">
+      <div class="nav-logo">
+        <span class="trophy">🏏</span>
+        <span class="nav-title">IPL Orange Cap Predictor</span>
+      </div>
+      <div class="nav-badge">2025 Season</div>
+    </div>
+  </nav>
+
+  <main class="main-content">
+
+    <!-- Hero -->
+    <section class="hero">
+      <div class="hero-tag">Powered by Machine Learning</div>
+      <h1 class="hero-headline">Who Will Wear<br><span class="accent">The Orange Cap?</span></h1>
+      <p class="hero-sub">Enter a batter's stats to predict their total season runs and Orange Cap probability.</p>
+    </section>
+
+    <!-- Form Card -->
+    <div class="card form-card">
+      <div class="card-header">
+        <span class="card-icon">📊</span>
+        <h2>Player Statistics</h2>
+      </div>
+
+      {% if error %}
+      <div class="alert alert-error">
+        <span class="alert-icon">⚠️</span>
+        <span>{{ error }}</span>
+      </div>
+      {% endif %}
+
+      <form method="POST" action="/predict" class="predict-form" novalidate>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="team">Team</label>
+            <div class="select-wrap">
+              <select id="team" name="team" required>
+                <option value="" disabled {% if not form_data.get('team') %}selected{% endif %}>Select team…</option>
+                {% for team in teams %}
+                <option value="{{ team }}" {% if form_data.get('team') == team %}selected{% endif %}>{{ team }}</option>
+                {% endfor %}
+              </select>
+              <span class="select-arrow">▾</span>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="player_name">Player Name</label>
+            <input type="text" id="player_name" name="player_name"
+                   placeholder="e.g. Virat Kohli"
+                   value="{{ form_data.get('player_name', '') }}" required>
+          </div>
+        </div>
+
+        <div class="form-row three-col">
+          <div class="form-group">
+            <label for="matches">Matches Played</label>
+            <input type="number" id="matches" name="matches" min="1" max="16"
+                   placeholder="14" value="{{ form_data.get('matches', '') }}" required>
+          </div>
+          <div class="form-group">
+            <label for="runs">Runs Scored</label>
+            <input type="number" id="runs" name="runs" min="0"
+                   placeholder="741" value="{{ form_data.get('runs', '') }}" required>
+          </div>
+          <div class="form-group">
+            <label for="strike_rate">Strike Rate</label>
+            <input type="number" id="strike_rate" name="strike_rate" min="0" step="0.01"
+                   placeholder="152.30" value="{{ form_data.get('strike_rate', '') }}" required>
+          </div>
+        </div>
+
+        <div class="form-row three-col">
+          <div class="form-group">
+            <label for="average">Batting Average</label>
+            <input type="number" id="average" name="average" min="0" step="0.01"
+                   placeholder="52.93" value="{{ form_data.get('average', '') }}" required>
+          </div>
+          <div class="form-group">
+            <label for="sixes">Sixes</label>
+            <input type="number" id="sixes" name="sixes" min="0"
+                   placeholder="38" value="{{ form_data.get('sixes', '') }}" required>
+          </div>
+          <div class="form-group">
+            <label for="fours">Fours</label>
+            <input type="number" id="fours" name="fours" min="0"
+                   placeholder="58" value="{{ form_data.get('fours', '') }}" required>
+          </div>
+        </div>
+
+        <button type="submit" class="predict-btn">
+          <span class="btn-text">Predict Orange Cap</span>
+          <span class="btn-icon">🏆</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Result Card -->
+    {% if prediction %}
+    <div class="card result-card result-{{ prediction.verdict_class }} animate-in">
+      <div class="result-header">
+        <div class="result-avatar">{{ prediction.player[0] }}</div>
+        <div class="result-identity">
+          <div class="result-player">{{ prediction.player }}</div>
+          <div class="result-team">{{ prediction.team }}</div>
+        </div>
+      </div>
+
+      <div class="result-body">
+        <div class="runs-display">
+          <div class="runs-number">{{ prediction.predicted_runs }}</div>
+          <div class="runs-label">Predicted Season Runs</div>
+        </div>
+        <div class="runs-bar-wrap">
+          <div class="runs-bar" style="--pct: {{ [prediction.predicted_runs / 9, 100] | min }}%"></div>
+        </div>
+        <div class="verdict-badge">{{ prediction.verdict }}</div>
+      </div>
+
+      <div class="result-footer">
+        <span>Model confidence based on RandomForest regression</span>
+      </div>
+    </div>
+    {% endif %}
+
+  </main>
+
+  <footer class="footer">
+    <p>IPL Orange Cap Predictor &nbsp;•&nbsp; ML-powered &nbsp;•&nbsp; For entertainment purposes</p>
+  </footer>
+
+  <script>
+    // Animate number counter
+    document.addEventListener('DOMContentLoaded', () => {
+      const numEl = document.querySelector('.runs-number');
+      if (!numEl) return;
+      const target = parseInt(numEl.textContent, 10);
+      let current = 0;
+      const step = Math.ceil(target / 60);
+      const timer = setInterval(() => {
+        current = Math.min(current + step, target);
+        numEl.textContent = current;
+        if (current >= target) clearInterval(timer);
+      }, 16);
+    });
+  </script>
+</body>
+</html>
